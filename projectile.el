@@ -1152,20 +1152,6 @@ they are excluded from the results of this function."
     (apply 'call-process program nil (current-buffer) nil args)
     (buffer-string)))
 
-(defun projectile-shell-command-to-string (command)
-  "Try to run COMMAND without actually using a shell and return the output.
-
-The function `eshell-search-path' will be used to search the PATH
-environment variable for an appropriate executable using the text
-occuring before the first space.  If no executable is found,
-fallback to `shell-command-to-string'."
-  (cl-destructuring-bind
-      (the-command . args) (split-string command " ")
-    (let ((binary-path (eshell-search-path the-command)))
-      (if binary-path
-          (apply 'projectile-call-process-to-string binary-path args)
-        (shell-command-to-string command)))))
-
 (defun projectile-check-vcs-status (&optional PROJECT-PATH)
   "Check the status of the current project.
 If PROJECT-PATH is a project, check this one instead."
@@ -1214,9 +1200,12 @@ Raise an error if their is no dirty project."
     (projectile-vc
      (projectile-completing-read "Select project: " mod-proj))))
 
+(defun projectile-shell-command-to-string (command)
+  (substring-no-properties (shell-command-to-string command)))
+
 (defun projectile-files-via-ext-command (command)
   "Get a list of relative file names in the project root by executing COMMAND."
-  (split-string (shell-command-to-string command) "\0" t))
+  (split-string (projectile-shell-command-to-string command) "\0" t))
 
 (defun projectile-index-directory (directory patterns progress-reporter)
   "Index DIRECTORY taking into account PATTERNS.
@@ -1680,7 +1669,7 @@ https://github.com/abo-abo/swiper")))
                       (gethash root projectile-projects-cache))))
     (unless project
       (setq project (make-instance projectile-project-cache :root root))
-      (dolist (file (cl-mapcan #'projectile-dir-files
+      (dolist (file (cl-mapcan 'projectile-dir-files
                                (projectile-get-project-directories)))
         (ppc-add-file project file))
       (when projectile-enable-caching
@@ -2623,7 +2612,7 @@ Returns a list of expanded filenames."
                         str)))
             (split-string
              (projectile-trim-string
-              (shell-command-to-string cmd))
+              (projectile-shell-command-to-string cmd))
              "\n+"
              t))))
 
