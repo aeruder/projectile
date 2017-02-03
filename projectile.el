@@ -1671,31 +1671,23 @@ https://github.com/abo-abo/swiper")))
         (funcall action res)
       res)))
 
-(defun projectile-current-project-files (&optional attr)
-  "Return a list of files for the current project."
-  (let ((myattr (or attr :relative))
+(defun projectile-current-project-fileobjs (&optional attr)
+  "Return a list of projectile-file-caches for the current project."
+  (let ((root (projectile-project-root))
         (project (and projectile-enable-caching
-                      (gethash (projectile-project-root) projectile-projects-cache)))
-        (files))
-    ;; nothing is cached
-    (if project
-        (setq files (ppc-get-files project myattr))
+                      (gethash root projectile-projects-cache))))
+    (unless project
+      (setq project (make-instance projectile-project-cache :root root))
+      (dolist (file (projectile-dir-files (projectile-get-project-directories)))
+        (ppc-add-file project file))
       (when projectile-enable-caching
-        (message "Empty cache. Projectile is initializing cache..."))
-      (setq files (cl-mapcan
-                   #'projectile-dir-files
-                   (projectile-get-project-directories)))
-      ;; cache the resulting list of files
-      (when projectile-enable-caching
-        (projectile-cache-project (projectile-project-root) files)))
-    (projectile-sort-files files)))
+        (puthash root project projectile-projects-cache)))
+    (let ((files (ppc-get-files project attr)))
+      (projectile-sort-files files))))
 
-(defun projectile-process-current-project-files (action)
-  "Process the current project's files using ACTION."
-  (let ((project-files (projectile-current-project-files))
-        (default-directory (projectile-project-root)))
-    (dolist (filename project-files)
-      (funcall action filename))))
+(defun projectile-current-project-files (&optional attr)
+  (let ((myattr (or attr :relative)))
+    projectile-current-project-fileobjs myattr))
 
 (defun projectile-current-project-dirs ()
   "Return a list of dirs for the current project."
@@ -3088,9 +3080,7 @@ This command will first prompt for the directory the file is in."
    (lambda (project)
      (when (file-exists-p project)
        (let ((default-directory project))
-         (mapcar (lambda (file)
-                   (expand-file-name file project))
-                 (projectile-current-project-files)))))
+         (projectile-current-project-files :absolute))))
    projectile-known-projects))
 
 ;;;###autoload
