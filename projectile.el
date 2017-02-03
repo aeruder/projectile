@@ -1673,17 +1673,20 @@ https://github.com/abo-abo/swiper")))
 
 (defun projectile-current-project-fileobjs (&optional attr)
   "Return a list of projectile-file-caches for the current project."
-  (let ((root (projectile-project-root))
-        (project (and projectile-enable-caching
+  (let* ((root (projectile-project-root))
+         (project (and projectile-enable-caching
                       (gethash root projectile-projects-cache))))
     (unless project
       (setq project (make-instance projectile-project-cache :root root))
-      (dolist (file (projectile-dir-files (projectile-get-project-directories)))
+      (dolist (file (cl-mapcan #'projectile-dir-files
+                               (projectile-get-project-directories)))
         (ppc-add-file project file))
       (when projectile-enable-caching
         (puthash root project projectile-projects-cache)))
-    (let ((files (ppc-get-files project attr)))
-      (projectile-sort-files files))))
+    (let ((files (projectile-sort-files (ppc-get-files project))))
+      (if attr
+          (dolist (fo files) (cached-value-get fo attr))
+        files))))
 
 (defun projectile-current-project-files (&optional attr)
   (let ((myattr (or attr :relative)))
@@ -1967,12 +1970,16 @@ With a prefix ARG invalidates the cache first."
 
 (defun projectile-sort-files (files)
   "Sort FILES according to `projectile-sort-order'."
-  (cl-case projectile-sort-order
-    (default files)
-    (recentf (projectile-sort-by-recentf-first files))
-    (recently-active (projectile-sort-by-recently-active-first files))
-    (modification-time (projectile-sort-by-modification-time files))
-    (access-time (projectile-sort-by-access-time files))))
+  files)
+
+; FIXME
+;; (cl-case projectile-sort-order
+;;   (default files)))
+;    (name    (projectile-sort-by-name files))
+;    (recentf (projectile-sort-by-recentf-first files))
+;    (recently-active (projectile-sort-by-recently-active-first files))
+;    (modification-time (projectile-sort-by-modification-time files))
+;    (access-time (projectile-sort-by-access-time files))))
 
 (defun projectile-sort-by-recentf-first (files)
   "Sort FILES by a recent first scheme."
@@ -2792,9 +2799,9 @@ For hg projects `monky-status' is used if available."
        (let ((collected))
          (maphash
           (lambda (filename fileobj) (push filename collected))
-          (slot-value proj files))
-         (puthash projname collected temp-cache))
-       projectile-projects-cache))
+          (slot-value proj 'files))
+         (puthash projname collected temp-cache)))
+     projectile-projects-cache)
     (projectile-serialize temp-cache projectile-cache-file)))
 
 (defun projectile-unserialize-cache ()
@@ -3525,6 +3532,14 @@ tramp."
     (projectile-cache-files-find-file-hook)
     (projectile-track-known-projects-find-file-hook)
     (projectile-visit-project-tags-table)))
+
+;; (dolist
+;;     (projname
+;;      (cl-remove-if
+;;      (lambda (p)
+;;        (string-prefix-p "/Users/a/repo" p))
+;;      (projectile-hash-keys projectile-projects-cache)))
+;;   (remhash projname projectile-projects-cache))
 
 ;;;###autoload
 (define-minor-mode projectile-mode
