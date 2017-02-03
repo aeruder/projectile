@@ -685,16 +685,6 @@ to invalidate."
     (dolist (file files) (ppc-add-file proj file))
     proj))
 
-(defun projectile-cache-project (project files)
-  "Cache PROJECTs FILES.
-The cache is created both in memory and on the hard drive."
-  (when projectile-enable-caching
-    (puthash
-     project
-     (projectile-create-project project files)
-     projectile-projects-cache)
-    (projectile-serialize-cache)))
-
 ;;;###autoload
 (defun projectile-purge-file-from-cache (file)
   "Purge FILE from the cache of the current project."
@@ -1673,7 +1663,8 @@ https://github.com/abo-abo/swiper")))
                                (projectile-get-project-directories)))
         (ppc-add-file project file))
       (when projectile-enable-caching
-        (puthash root project projectile-projects-cache)))
+        (puthash root project projectile-projects-cache)
+        (projectile-serialize-cache)))
     (let ((files (projectile-sort-files (ppc-get-files project))))
       (if attr
           (cl-mapcar (lambda (x) (cached-value-get x attr)) files)
