@@ -1687,7 +1687,7 @@ https://github.com/abo-abo/swiper")))
         (puthash root project projectile-projects-cache)))
     (let ((files (projectile-sort-files (ppc-get-files project))))
       (if attr
-          (dolist (fo files) (cached-value-get fo attr))
+          (cl-mapcar (lambda (x) (cached-value-get x attr)) files)
         files))))
 
 (defun projectile-current-project-files (&optional attr)

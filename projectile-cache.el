@@ -146,7 +146,7 @@
                                                (cached-value-get b :absolute)))))
         (oset this internal-files-list files-list)))
     (if attr
-        (dolist (file files-list) (cached-value-get file attr))
+        (cl-mapcar (lambda (x) (cached-value-get x attr)) files-list)
       files-list)))
 
 (cl-defmethod ppc-get-file ((this projectile-project-cache) file &optional attr)
