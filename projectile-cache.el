@@ -114,36 +114,43 @@
 
 (defclass projectile-project-cache ()
   ((root :initarg :root)
-   (files :initarg :files :initform (make-hash-table))))
+   (internal-files :initarg :files :initform (make-hash-table :test 'equal))
+   (internal-files-list :initform nil)))
 
 (cl-defmethod ppc-add-file ((this projectile-project-cache) file)
-  (let ((files (oref this files))
+  (let ((files (oref this internal-files))
         (fc (make-instance projectile-file-cache :project this)))
     (cached-value-set-static fc :relative file)
     (puthash file fc files)
+    (oset this internal-files-list nil)
     fc))
 
 (cl-defmethod ppc-has-file ((this projectile-project-cache) file)
-  (let ((files (oref this files)))
+  (let ((files (oref this internal-files)))
     (gethash file files nil)))
 
 (cl-defmethod ppc-rm-file ((this projectile-project-cache) file)
-  (let ((files (oref this files)))
-    (remhash file files)))
+  (let ((files (oref this internal-files)))
+    (remhash file files)
+    (oset this internal-files-list nil)))
 
 (cl-defmethod ppc-get-files ((this projectile-project-cache) &optional attr)
-  (let ((files (oref this files))
-        (collected))
-    (maphash
-     (if attr
-         (lambda (k _v)
-           (push (cached-value-get _v attr) collected))
-       (lambda (k _v)
-         (push _v collected))) files)
-    collected))
+  (let ((files-list (oref this internal-files-list)))
+    (unless files-list
+      (let ((files (oref this internal-files))
+            (collected))
+        (maphash (lambda (k v) (push v collected)) files)
+        (setq files-list (cl-sort collected (lambda (a b)
+                                              (string-lessp
+                                               (cached-value-get a :absolute)
+                                               (cached-value-get b :absolute)))))
+        (oset this internal-files-list files-list)))
+    (if attr
+        (dolist (file files-list) (cached-value-get file attr))
+      files-list)))
 
 (cl-defmethod ppc-get-file ((this projectile-project-cache) file &optional attr)
-  (let* ((files (oref this files))
+  (let* ((files (oref this internal-files))
          (file (gethash file files)))
     (if file (if attr (cached-value-get file attr) file))))
 

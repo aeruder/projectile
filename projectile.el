@@ -728,7 +728,9 @@ The cache is created both in memory and on the hard drive."
 
 (defun projectile-file-cached-p (file project)
   "Check if FILE is already in PROJECT cache."
-  (ppc-has-file (gethash project projectile-projects-cache) file))
+  (let ((project (gethash project projectile-projects-cache)))
+    (and project
+         (ppc-has-file project file))))
 
 ;;;###autoload
 (defun projectile-cache-current-file ()
@@ -1690,7 +1692,7 @@ https://github.com/abo-abo/swiper")))
 
 (defun projectile-current-project-files (&optional attr)
   (let ((myattr (or attr :relative)))
-    projectile-current-project-fileobjs myattr))
+    (projectile-current-project-fileobjs myattr)))
 
 (defun projectile-current-project-dirs ()
   "Return a list of dirs for the current project."
@@ -1970,7 +1972,8 @@ With a prefix ARG invalidates the cache first."
 
 (defun projectile-sort-files (files)
   "Sort FILES according to `projectile-sort-order'."
-  files)
+  (cl-case projectile-sort-order
+    (t files)))
 
 ; FIXME
 ;; (cl-case projectile-sort-order
@@ -1982,10 +1985,12 @@ With a prefix ARG invalidates the cache first."
 ;    (access-time (projectile-sort-by-access-time files))))
 
 (defun projectile-sort-by-recentf-first (files)
-  "Sort FILES by a recent first scheme."
-  (let ((project-recentf-files (projectile-recentf-files)))
-    (append project-recentf-files
-            (projectile-difference files project-recentf-files))))
+  (defun projectile-sort-by-name (files)
+    "Sort FILES alphabetically by recentf."
+    (cl-sort files (lambda (a b)
+                     (string-lessp
+                      (cached-value-get a :absolute)
+                      (cached-value-get b :absolute))))))
 
 (defun projectile-sort-by-recently-active-first (files)
   "Sort FILES by most recently active buffers or opened files."
@@ -2796,10 +2801,7 @@ For hg projects `monky-status' is used if available."
   (let ((temp-cache (make-hash-table)))
     (maphash
      (lambda (projname proj)
-       (let ((collected))
-         (maphash
-          (lambda (filename fileobj) (push filename collected))
-          (slot-value proj 'files))
+       (let ((collected (ppc-get-files proj :relative)))
          (puthash projname collected temp-cache)))
      projectile-projects-cache)
     (projectile-serialize temp-cache projectile-cache-file)))
