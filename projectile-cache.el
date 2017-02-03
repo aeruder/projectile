@@ -169,6 +169,6 @@
                        (tout (if remote
                                  (or projectile-file-exists-remote-cache-expire -1)
                                (or projectile-file-exists-local-cache-expire -1)))
-                  (list (file-exists-p abs) tout))))
+                  (list (file-exists-p abs) tout)))))
 
 (provide 'projectile-cache)
