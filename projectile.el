@@ -2807,12 +2807,13 @@ For hg projects `monky-status' is used if available."
 (defun projectile-unserialize-cache ()
   "Retrieves the project cache from the hard drive."
   (let ((temp-cache (projectile-unserialize projectile-cache-file))
-        (new-cache (make-hash-table)))
-    (maphash
-     (lambda (projname files)
-       (let ((proj (projectile-create-project projname files)))
-         (puthash projname proj new-cache)))
-     temp-cache)
+        (new-cache (make-hash-table :test 'equal)))
+    (if temp-cache
+        (maphash
+         (lambda (projname files)
+           (let ((proj (projectile-create-project projname files)))
+             (puthash projname proj new-cache)))
+         temp-cache))
     new-cache))
 
 (defvar projectile-compilation-cmd-map
